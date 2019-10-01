@@ -15,6 +15,7 @@
     },
     "require-dev": {
         "facade/ignition": "^1.4",
+        "filippo-toso/migrations-generator": "^1.5",
         "fzaninotto/faker": "^1.4",
         "mockery/mockery": "^1.0",
         "nunomaduro/collision": "^3.0",
