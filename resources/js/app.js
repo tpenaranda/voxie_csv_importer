@@ -1,6 +1,12 @@
-require('./bootstrap');
+import BootstrapVue from 'bootstrap-vue'
+import 'bootstrap/dist/css/bootstrap.css'
+import 'bootstrap-vue/dist/bootstrap-vue.css'
 
-window.Vue = require('vue');
+require('./bootstrap')
+
+window.Vue = require('vue')
+
+Vue.use(BootstrapVue)
 
 /**
  * The following block of code may be used to automatically register your
@@ -10,9 +16,9 @@ window.Vue = require('vue');
  * Eg. ./components/ExampleComponent.vue -> <example-component></example-component>
  */
 
-const files = require.context('./', true, /\.vue$/i);
-files.keys().map(key => Vue.component(key.split('/').pop().split('.')[0], files(key).default));
+const files = require.context('./', true, /\.vue$/i)
+files.keys().map(key => Vue.component(key.split('/').pop().split('.')[0], files(key).default))
 
 const app = new Vue({
     el: '#app'
-});
+})

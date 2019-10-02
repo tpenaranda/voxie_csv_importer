@@ -1,8 +1,13 @@
 <template>
-    <div>
+    <div class="main">
+        <img src="https://www.voxie.com/wp-content/uploads/elementor/thumbs/VOXIE-black-o1ol2ora2qld6vodwmsrb0qd5dj7ere5midef05xk8.png" width="400">
+        <h2>CSV File Parser</h2>
         <vue-csv-import ref="importer"
             v-model="csvData"
+            headers=true
             url="/hello"
+            tableClass="table-striped"
+            inputClass="input-group"
             :map-fields="csvFields">
 
             <template slot="hasHeaders" slot-scope="{headers, toggle}">
@@ -20,7 +25,7 @@
             </template>
 
             <template slot="next" slot-scope="{load}">
-                <button @click.prevent="load">Load data</button>
+                <button @click.prevent="load" class="btn btn-success">Load data</button>
             </template>
 
             <template slot="submit">
@@ -97,4 +102,22 @@
 </script>
 
 <style lang="scss">
+    h2 {
+        border-bottom: 1px solid;
+        border-top: 1px solid;
+        margin-top: .25em;
+        margin-bottom: .25em;
+    }
+    .csv-import-file {
+        margin: 5em;
+    }
+    div.main {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      min-height: 100vh;
+      border: 1px solid;
+    }
 </style>
