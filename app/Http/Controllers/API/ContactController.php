@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\{Contact, CustomAttribute};
+use App\Contact;
 use Illuminate\Http\Request;
 
 class ContactController extends Controller
@@ -11,7 +11,7 @@ class ContactController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'data' => 'array',
+            'data' => 'array|present',
             'data.*.email' => 'email|max:191|nullable',
             'data.*.fb_messenger_id' => 'string|max:191|nullable',
             'data.*.first_name' => 'string|max:191|nullable',
@@ -28,6 +28,7 @@ class ContactController extends Controller
             $contact = Contact::create($data);
 
             $customAttributes = array_except($data, $contact->getFillable());
+
             $contact->customAttributes()->createMany(collect($customAttributes)->transform(function ($value, $key) {
                 return compact('key', 'value');
             }));
