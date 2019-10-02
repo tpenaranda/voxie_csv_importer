@@ -32,6 +32,14 @@
                 <button @click.prevent="postData">Submit</button>
             </template>
         </vue-csv-import>
+        <div v-if="errors.length" class="errors">
+            <p class="text-danger">Error when importing data</p>
+            <b-list-group>
+                <b-list-group-item v-for="error in errors" variant="warning">
+                    <strong>Error in CSV row #{{ error[1] }}:</strong> {{ error[2] }}
+                </b-list-group-item>
+            </b-list-group>
+        </div>
     </div>
 </template>
 
@@ -52,11 +60,12 @@
                 last_name: 'Last Name [string]',
                 phone: 'Phone [required, string]',
                 sticky_phone_number_id: 'Sticky Phone Number #ID [integer]',
-                team_id: '<span>Team #ID [required, integer]</span>',
+                team_id: 'Team #ID [required, integer]',
                 time_zone: 'Time Zone [string]',
                 twitter_id: 'Twitter #ID [string]',
                 unsubscribed_status: 'Unsubscribed Status [required, string]'
             },
+            errors: [],
             requestInProgress: false
         }),
         computed: {
@@ -66,10 +75,17 @@
         methods: {
             postData() {
                 this.requestInProgress = true
+                this.errors = []
                 axios.post('/api/contacts', {data: this.getImporterData()}).then((response) => {
                     alert('POST Done!')
-                }).catch((error) => {
-                    alert('POST Error')
+                }).catch(error => {
+                    if (error.response && error.response.status === 422) {
+                        _.forEach(error.response.data.errors, (error) => {
+                            this.errors.push(error[0].split('.', 3))
+                        })
+                    } else {
+                        console.log(error)
+                    }
                 }).finally((response) => {
                     this.requestInProgress = false
                 })
