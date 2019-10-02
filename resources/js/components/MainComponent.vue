@@ -32,10 +32,13 @@
                 <button @click.prevent="postData">Submit</button>
             </template>
         </vue-csv-import>
+        <div v-if="results.items.length" class="results">
+            <b-table striped hover :items="results.items" :fields="results.fields"></b-table>
+        </div>
         <div v-if="errors.length" class="errors">
             <p class="text-danger">Error when importing data</p>
             <b-list-group>
-                <b-list-group-item v-for="error in errors" variant="warning">
+                <b-list-group-item v-for="(error, index) in errors" v-bind:key="index" variant="warning">
                     <strong>Error in CSV row #{{ error[1] }}:</strong> {{ error[2] }}
                 </b-list-group-item>
             </b-list-group>
@@ -66,6 +69,56 @@
                 unsubscribed_status: 'Unsubscribed Status [required, string]'
             },
             errors: [],
+            results: {
+                fields: [
+                    {
+                        key: 'email',
+                        sorteable: true
+                    },
+                    {
+                        key: 'fb_messenger_id',
+                        sorteable: true
+                    },
+                    {
+                        key: 'first_name',
+                        sorteable: true
+                    },
+                    {
+                        key: 'last_name',
+                        sorteable: true
+                    },
+                    {
+                        key: 'phone',
+                        sorteable: false
+                    },
+                    {
+                        key: 'sticky_phone_number_id',
+                        sorteable: false
+                    },
+                    {
+                        key: 'team_id',
+                        sorteable: false
+                    },
+                    {
+                        key: 'time_zone',
+                        sorteable: false
+                    },
+                    {
+                        key: 'twitter_id',
+                        sorteable: true
+                    },
+                    {
+                        key: 'unsubscribed_status',
+                        sorteable: true
+                    },
+                    {
+                        key: 'custom_attributes',
+                        sorteable: false,
+                        variant: 'secondary'
+                    }
+                ],
+                items: []
+            },
             requestInProgress: false
         }),
         computed: {
@@ -77,14 +130,19 @@
                 this.requestInProgress = true
                 this.errors = []
                 axios.post('/api/contacts', {data: this.getImporterData()}).then((response) => {
-                    alert('POST Done!')
+                    this.results.items = _.map(response.data, (row) => {
+                        row.custom_attributes = _.map(row.custom_attributes, (item) => {
+                            return `${item.key}: ${item.value}`
+                        }).join(' / ')
+                        return row
+                    })
                 }).catch(error => {
                     if (error.response && error.response.status === 422) {
                         _.forEach(error.response.data.errors, (error) => {
                             this.errors.push(error[0].split('.', 3))
                         })
                     } else {
-                        console.log(error)
+                        alert('Unknown error when submitting CSV data...')
                     }
                 }).finally((response) => {
                     this.requestInProgress = false

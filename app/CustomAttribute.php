@@ -11,6 +11,8 @@ class CustomAttribute extends Model
 
     protected $fillable = ['key', 'value'];
 
+    protected $hidden = ['id', 'contact_id'];
+
     protected $casts = [
         'key' => 'string',
         'value' => 'string',
