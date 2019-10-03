@@ -65,7 +65,7 @@
         name: 'MainComponent',
         data: () => ({
             csvFile: null,
-            rowLimit: 512,
+            rowLimit: 100,
             errors: [],
             errorTitle: null,
             fieldsMapping: {},
