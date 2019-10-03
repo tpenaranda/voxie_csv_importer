@@ -65,10 +65,11 @@
         name: 'MainComponent',
         data: () => ({
             csvFile: null,
-            rowLimit: 100,
             errors: [],
             errorTitle: null,
             fieldsMapping: {},
+            parsedFileData: null,
+            parsedFilePreviewData: null,
             results: {
                 fields: [
                     { key: 'email', sorteable: true, label: 'Email [string, unique]' },
@@ -86,12 +87,9 @@
                 items: []
             },
             requestInProgress: false,
-            step: 1,
-            parsedFileData: null,
-            parsedFilePreviewData: null
+            rowLimit: 128,
+            step: 1
         }),
-        created () {
-        },
         methods: {
             parseFile() {
                 let reader = new FileReader();
@@ -107,7 +105,7 @@
 
                     if (parsedFile.meta.truncated) {
                         this.errorTitle = 'Data truncated!'
-                        this.errors = [`Your CSV file is being truncated to ${this.rowLimit} rows. This importer tool works synchronically against the BE (no Jobs/Queues) so intensive usage of CPU/Database could translate in timeouts or blocked FE.`]
+                        this.errors = [`Your CSV file is being truncated to ${this.rowLimit} rows. This importer tool works synchronically against the BE (no Jobs/Queues) and a big load could end in timeouts or unresponsive FE.`]
                         this.$bvModal.show('errors-modal')
                     }
 
@@ -115,7 +113,7 @@
                 };
 
                 reader.onerror = function () {
-                    alert('Error reading file.')
+                    alert('Error reading CSV file.')
                 };
             },
             postData() {
@@ -124,7 +122,7 @@
                     this.results.items = _.map(response.data, (row) => {
                         row.custom_attributes = _.map(row.custom_attributes, (item) => {
                             return `${item.key} => ${item.value}`
-                        }).join(' | ')
+                        }).join(' / ')
                         return row
                     })
                     this.step = 3
