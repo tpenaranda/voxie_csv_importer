@@ -32,7 +32,7 @@
                 <tr v-for="(field, key) in results.fields.filter((i) => i.label)" :key="key">
                     <td v-bind:class="{'text-danger': field.required}">{{ field.label }}</td>
                     <td>
-                        <b-form-select v-model="fieldsMapping[field.key]" :options="parsedFilePreview[0].map((v, k) => { return {text: v, value: k} })"></b-form-select>
+                        <b-form-select v-model="fieldsMapping[field.key]" :options="parsedFilePreviewData[0].map((v, k) => { return {text: v, value: k} })"></b-form-select>
                     </td>
                 </tr>
                 </tbody>
@@ -47,10 +47,10 @@
         </div>
 
         <div class="errors-modal">
-          <b-modal id="errors-modal" scrollable centered title="Can't store your data!" ok-only>
+          <b-modal id="errors-modal" scrollable centered :title="errorTitle || 'Can\'t store your data!'" ok-only>
             <b-list-group>
                 <b-list-group-item v-for="(error, index) in errors" v-bind:key="index" variant="warning">
-                    <strong>Error at row #{{ error[1] }}:</strong> {{ error[2] }}
+                    {{ error }}
                 </b-list-group-item>
             </b-list-group>
           </b-modal>
@@ -66,6 +66,7 @@
         data: () => ({
             csvFile: null,
             errors: [],
+            errorTitle: null,
             fieldsMapping: {},
             results: {
                 fields: [
@@ -85,8 +86,8 @@
             },
             requestInProgress: false,
             step: 1,
-            parsedFile: null,
-            parsedFilePreview: null
+            parsedFileData: null,
+            parsedFilePreviewData: null
         }),
         created () {
         },
@@ -96,10 +97,18 @@
                 reader.readAsText(this.csvFile, "UTF-8");
 
                 reader.onload = (evt) => {
-                    let data = evt.target.result;
+                    let csvString = evt.target.result;
 
-                    this.parsedFilePreview = _.get(Papaparse.parse(data, { preview: 2, skipEmptyLines: true }), 'data')
-                    this.parsedFile = _.get(Papaparse.parse(data, { skipEmptyLines: true }), 'data')
+                    this.parsedFilePreviewData = Papaparse.parse(csvString, { preview: 2, skipEmptyLines: true }).data
+
+                    let parsedFile = Papaparse.parse(csvString, { preview: 1024, skipEmptyLines: true })
+                    this.parsedFileData = parsedFile.data
+
+                    if (parsedFile.meta.truncated) {
+                        this.errorTitle = 'Data truncated!'
+                        this.errors = ['Your CSV file is being truncated to 1024 rows. This importer tool works synchronically against the BE (no Jobs/Queues) so intensive usage of CPU/Database could translate in timeouts or blocked FE.']
+                        this.$bvModal.show('errors-modal')
+                    }
 
                     this.step = 2
                 };
@@ -110,7 +119,6 @@
             },
             postData() {
                 this.requestInProgress = true
-                this.errors = []
                 axios.post('/api/contacts', {data: this.buildPostData()}).then((response) => {
                     this.results.items = _.map(response.data, (row) => {
                         row.custom_attributes = _.map(row.custom_attributes, (item) => {
@@ -121,8 +129,10 @@
                     this.step = 3
                 }).catch(error => {
                     if (error.response && error.response.status === 422) {
+                        this.errors = []
                         _.forEach(error.response.data.errors, (error) => {
-                            this.errors.push(error[0].split('.', 3))
+                            let errorPieces = error[0].split('.', 3)
+                            this.errors.push(`Row #${errorPieces[1]}: ${errorPieces[2]}`)
                         })
                         this.$bvModal.show('errors-modal')
                     } else {
@@ -134,7 +144,7 @@
             },
             buildPostData() {
                 let mappedColumns = Object.values(this.fieldsMapping)
-                let data = _.clone(this.parsedFile)
+                let data = _.clone(this.parsedFileData)
 
                 data.shift()
 
