@@ -65,6 +65,7 @@
         name: 'MainComponent',
         data: () => ({
             csvFile: null,
+            rowLimit: 512,
             errors: [],
             errorTitle: null,
             fieldsMapping: {},
@@ -101,12 +102,12 @@
 
                     this.parsedFilePreviewData = Papaparse.parse(csvString, { preview: 2, skipEmptyLines: true }).data
 
-                    let parsedFile = Papaparse.parse(csvString, { preview: 1024, skipEmptyLines: true })
+                    let parsedFile = Papaparse.parse(csvString, { preview: this.rowLimit, skipEmptyLines: true })
                     this.parsedFileData = parsedFile.data
 
                     if (parsedFile.meta.truncated) {
                         this.errorTitle = 'Data truncated!'
-                        this.errors = ['Your CSV file is being truncated to 1024 rows. This importer tool works synchronically against the BE (no Jobs/Queues) so intensive usage of CPU/Database could translate in timeouts or blocked FE.']
+                        this.errors = [`Your CSV file is being truncated to ${this.rowLimit} rows. This importer tool works synchronically against the BE (no Jobs/Queues) so intensive usage of CPU/Database could translate in timeouts or blocked FE.`]
                         this.$bvModal.show('errors-modal')
                     }
 

@@ -30,7 +30,7 @@ Make sure to include unit/feature tests along with your code.
 
 2. Create an empty mysql database.
 
-3. Rename `.env.example` file to `.env` and configure DB values
+3. Rename `.env.example` file to `.env` and configure DB and Redis values
 
 4. `composer update`
 
