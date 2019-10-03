@@ -123,8 +123,8 @@
                 axios.post('/api/contacts', {data: this.buildPostData()}).then((response) => {
                     this.results.items = _.map(response.data, (row) => {
                         row.custom_attributes = _.map(row.custom_attributes, (item) => {
-                            return `${item.key}: ${item.value}`
-                        }).join(' / ')
+                            return `${item.key} => ${item.value}`
+                        }).join(' | ')
                         return row
                     })
                     this.step = 3
@@ -157,7 +157,7 @@
                     })
 
                     _.forEach(row.filter((data, column) => !mappedColumns.includes(column)), (data, column) => {
-                        _.set(newRow, `Custom #${column}`, _.get(row, column));
+                        _.set(newRow, column, data);
                     })
 
                     return newRow;
