@@ -22,14 +22,13 @@ class ContactControllerTest extends TestCase
         $this->json('POST', '/api/contacts', [])->assertStatus(422);
     }
 
-    public function testDataIsPersistedIntoContactsTableAndJsonResponseMatches()
+    public function testDataIsSplitAndPersistedIntoContactsTableAndCustomAtrributesTable()
     {
         $data = [
             [
                 'phone' => '123',
                 'team_id' => '456',
                 'unsubscribed_status' => 'active',
-
             ],
             [
                 'first_name' => 'Willy',
@@ -41,6 +40,7 @@ class ContactControllerTest extends TestCase
                 'phone' => '123',
                 'team_id' => '456',
                 'unsubscribed_status' => 'active',
+                'custom_field' => 'test',
             ]
         ];
 
@@ -48,8 +48,76 @@ class ContactControllerTest extends TestCase
 
         $this->assertDatabaseHas('contacts', $data[0]);
         $this->assertDatabaseHas('contacts', $data[1]);
-        $this->assertDatabaseHas('contacts', $data[2]);
 
-        $response->assertSuccessful()->assertJson($data);
+        $this->assertDatabaseMissing('contacts', ['custom_field' => 'test']);
+        $this->assertDatabaseHas('custom_attributes', ['key' => 'custom_field', 'value' => 'test']);
+
+        $response->assertSuccessful()->assertJson([$data[0], $data[1]]);
+    }
+
+    public function testPhoneKeyIsRequired()
+    {
+        $data = [
+            [
+                'phone' => '123',
+                'team_id' => '456',
+                'unsubscribed_status' => 'active',
+            ],
+            [
+                'team_id' => '456',
+                'unsubscribed_status' => 'active',
+            ],
+            [
+                'phone' => '123',
+                'team_id' => '456',
+                'unsubscribed_status' => 'active',
+            ]
+        ];
+
+        $response = $this->json('POST', '/api/contacts', compact('data'))->assertStatus(422);;
+    }
+
+    public function testTeamIdKeyIsRequired()
+    {
+        $data = [
+            [
+                'phone' => '123',
+                'team_id' => '456',
+                'unsubscribed_status' => 'active',
+            ],
+            [
+                'phone' => '123',
+                'unsubscribed_status' => 'active',
+            ],
+            [
+                'phone' => '123',
+                'team_id' => '456',
+                'unsubscribed_status' => 'active',
+            ]
+        ];
+
+        $response = $this->json('POST', '/api/contacts', compact('data'))->assertStatus(422);;
+    }
+
+    public function testUnsubscribedStatusKeyIsRequired()
+    {
+        $data = [
+            [
+                'phone' => '123',
+                'team_id' => '456',
+                'unsubscribed_status' => 'active',
+            ],
+            [
+                'phone' => '123',
+                'team_id' => '456',
+            ],
+            [
+                'phone' => '123',
+                'team_id' => '456',
+                'unsubscribed_status' => 'active',
+            ]
+        ];
+
+        $response = $this->json('POST', '/api/contacts', compact('data'))->assertStatus(422);;
     }
 }
