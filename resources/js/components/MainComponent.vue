@@ -37,11 +37,13 @@
                 </tr>
                 </tbody>
             </table>
-            <b-button @click.prevent="postData" :disabled="false" class="btn btn-warning">Upload data</b-button>
+            <b-spinner v-if="requestInProgress" variant="warning" label="Uploading..."></b-spinner>
+            <b-button v-else @click.prevent="postData" :disabled="false" class="btn btn-warning">Upload data</b-button>
         </div>
 
         <div class="step-three" v-if="step === 3">
-            <b-table striped hover :items="results.items" :fields="results.fields"></b-table>
+            <p class="text-success success-message">All good! This is the data returning from the BE tables...</p>
+            <b-table striped bordered small :items="results.items" :fields="results.fields.map((i) => i.key) "></b-table>
         </div>
 
         <div class="errors-modal">
@@ -144,7 +146,7 @@
                     })
 
                     _.forEach(row.filter((data, column) => !mappedColumns.includes(column)), (data, column) => {
-                        _.set(newRow, `Column #${column}`, _.get(row, column));
+                        _.set(newRow, `Custom #${column}`, _.get(row, column));
                     })
 
                     return newRow;
@@ -171,7 +173,7 @@
         margin: 1em;
     }
     .step-three {
-        width: 95%;
+        width: 85%;
         margin-top: 1em;
     }
     .step-bar {
