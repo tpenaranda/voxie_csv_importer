@@ -2,145 +2,127 @@
     <div class="main">
         <img src="https://www.voxie.com/wp-content/uploads/elementor/thumbs/VOXIE-black-o1ol2ora2qld6vodwmsrb0qd5dj7ere5midef05xk8.png" width="400">
         <h2>CSV File Parser</h2>
-        <vue-csv-import ref="importer"
-            v-model="csvData"
-            headers=true
-            url="/hello"
-            tableClass="table-striped"
-            inputClass="input-group"
-            :map-fields="csvFields">
 
-            <template slot="hasHeaders" slot-scope="{headers, toggle}">
-                <label>
-                    <input type="checkbox" id="hasHeaders" :value="headers" @change="toggle">
-                    CSV file has header?
-                </label>
-            </template>
+        <b-progress :max="3" class="step-bar">
+          <b-progress-bar :value="step" :label="`Step ${step} / 3`"></b-progress-bar>
+        </b-progress>
 
-            <template slot="thead">
+        <div class="step-one" v-if="step === 1">
+            <b-form-file
+                v-model="csvFile"
+                :state="!!csvFile"
+                placeholder="Choose a CSV file (with header) or drop it here..."
+                drop-placeholder="Drop file here..."
+                accept="text/csv, text/x-csv, application/vnd.ms-excel, text/plain"
+                class="csv-input"
+            ></b-form-file>
+
+            <b-button @click.prevent="parseFile" :disabled="!csvFile" class="btn btn-success">Parse file</b-button>
+        </div>
+
+        <div class="step-two" v-if="step === 2">
+            <table class="table-condensed borderless">
+                <thead>
                 <tr>
                     <th>Field</th>
-                    <th>Get from Column</th>
+                    <th>CSV Column</th>
                 </tr>
-            </template>
+                </thead>
+                <tbody>
+                <tr v-for="(field, key) in results.fields.filter((i) => i.label)" :key="key">
+                    <td v-bind:class="{'text-danger': field.required}">{{ field.label }}</td>
+                    <td>
+                        <b-form-select v-model="fieldsMapping[field.key]" :options="parsedFilePreview[0].map((v, k) => { return {text: v, value: k} })"></b-form-select>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <b-button @click.prevent="postData" :disabled="false" class="btn btn-warning">Upload data</b-button>
+        </div>
 
-            <template slot="next" slot-scope="{load}">
-                <button @click.prevent="load" class="btn btn-success">Load data</button>
-            </template>
-
-            <template slot="submit">
-                <button @click.prevent="postData">Submit</button>
-            </template>
-        </vue-csv-import>
-        <div v-if="results.items.length" class="results">
+        <div class="step-three" v-if="step === 3">
             <b-table striped hover :items="results.items" :fields="results.fields"></b-table>
         </div>
-        <div v-if="errors.length" class="errors">
-            <p class="text-danger">Error when importing data</p>
+
+        <div class="errors-modal">
+          <b-modal id="errors-modal" scrollable centered title="Can't store your data!" ok-only>
             <b-list-group>
                 <b-list-group-item v-for="(error, index) in errors" v-bind:key="index" variant="warning">
-                    <strong>Error in CSV row #{{ error[1] }}:</strong> {{ error[2] }}
+                    <strong>Error at row #{{ error[1] }}:</strong> {{ error[2] }}
                 </b-list-group-item>
             </b-list-group>
+          </b-modal>
         </div>
     </div>
 </template>
 
 <script>
-    import { VueCsvImport } from 'vue-csv-import';
+    import Papaparse from 'papaparse';
 
     export default {
         name: 'MainComponent',
-        components: {
-            VueCsvImport
-        },
         data: () => ({
-            csvData: [],
-            csvFields: {
-                email: 'Email [string, unique]',
-                fb_messenger_id: 'Facebook Messenger #ID [string]',
-                first_name: 'First Name [string]',
-                last_name: 'Last Name [string]',
-                phone: 'Phone [required, string]',
-                sticky_phone_number_id: 'Sticky Phone Number #ID [integer]',
-                team_id: 'Team #ID [required, integer]',
-                time_zone: 'Time Zone [string]',
-                twitter_id: 'Twitter #ID [string]',
-                unsubscribed_status: 'Unsubscribed Status [required, string]'
-            },
+            csvFile: null,
             errors: [],
+            fieldsMapping: {},
             results: {
                 fields: [
-                    {
-                        key: 'email',
-                        sorteable: true
-                    },
-                    {
-                        key: 'fb_messenger_id',
-                        sorteable: true
-                    },
-                    {
-                        key: 'first_name',
-                        sorteable: true
-                    },
-                    {
-                        key: 'last_name',
-                        sorteable: true
-                    },
-                    {
-                        key: 'phone',
-                        sorteable: false
-                    },
-                    {
-                        key: 'sticky_phone_number_id',
-                        sorteable: false
-                    },
-                    {
-                        key: 'team_id',
-                        sorteable: false
-                    },
-                    {
-                        key: 'time_zone',
-                        sorteable: false
-                    },
-                    {
-                        key: 'twitter_id',
-                        sorteable: true
-                    },
-                    {
-                        key: 'unsubscribed_status',
-                        sorteable: true
-                    },
-                    {
-                        key: 'custom_attributes',
-                        sorteable: false,
-                        variant: 'secondary'
-                    }
+                    { key: 'email', sorteable: true, label: 'Email [string, unique]' },
+                    { key: 'fb_messenger_id', sorteable: true, label: 'Facebook Messenger #ID [string]' },
+                    { key: 'first_name', sorteable: true, label: 'First Name [string]' },
+                    { key: 'last_name', sorteable: true, label: 'Last Name [string]' },
+                    { key: 'phone', sorteable: false, label: 'Phone [required, string]', required: true },
+                    { key: 'sticky_phone_number_id', sorteable: false, label: 'Sticky Phone Number #ID [integer]' },
+                    { key: 'team_id', sorteable: false, label: 'Team #ID [required, integer]', required: true },
+                    { key: 'time_zone', sorteable: false, label: 'Time Zone [string]' },
+                    { key: 'twitter_id', sorteable: true, label: 'Twitter #ID [string]' },
+                    { key: 'unsubscribed_status', sorteable: true, label: 'Unsubscribed Status [required, string]', required: true },
+                    { key: 'custom_attributes', sorteable: false, variant: 'secondary'}
                 ],
                 items: []
             },
-            requestInProgress: false
+            requestInProgress: false,
+            step: 1,
+            parsedFile: null,
+            parsedFilePreview: null
         }),
-        computed: {
-        },
-        mounted () {
+        created () {
         },
         methods: {
+            parseFile() {
+                let reader = new FileReader();
+                reader.readAsText(this.csvFile, "UTF-8");
+
+                reader.onload = (evt) => {
+                    let data = evt.target.result;
+
+                    this.parsedFilePreview = _.get(Papaparse.parse(data, { preview: 2, skipEmptyLines: true }), 'data')
+                    this.parsedFile = _.get(Papaparse.parse(data, { skipEmptyLines: true }), 'data')
+
+                    this.step = 2
+                };
+
+                reader.onerror = function () {
+                    alert('Error reading file.')
+                };
+            },
             postData() {
                 this.requestInProgress = true
                 this.errors = []
-                axios.post('/api/contacts', {data: this.getImporterData()}).then((response) => {
+                axios.post('/api/contacts', {data: this.buildPostData()}).then((response) => {
                     this.results.items = _.map(response.data, (row) => {
                         row.custom_attributes = _.map(row.custom_attributes, (item) => {
                             return `${item.key}: ${item.value}`
                         }).join(' / ')
                         return row
                     })
+                    this.step = 3
                 }).catch(error => {
                     if (error.response && error.response.status === 422) {
                         _.forEach(error.response.data.errors, (error) => {
                             this.errors.push(error[0].split('.', 3))
                         })
+                        this.$bvModal.show('errors-modal')
                     } else {
                         alert('Unknown error when submitting CSV data...')
                     }
@@ -148,24 +130,21 @@
                     this.requestInProgress = false
                 })
             },
-            getImporterData() {
-                let importer = this.$refs.importer
-                let parsedFile = _.clone(importer.csv)
-                let mappedColumns = Object.values(importer.map)
+            buildPostData() {
+                let mappedColumns = Object.values(this.fieldsMapping)
+                let data = _.clone(this.parsedFile)
 
-                if (importer.hasHeaders) {
-                    parsedFile.shift()
-                }
+                data.shift()
 
-                return _.map(parsedFile, (row) => {
+                return _.map(data, (row) => {
                     let newRow = {};
 
-                    _.forEach(importer.map, (column, fieldName) => {
+                    _.forEach(this.fieldsMapping, (column, fieldName) => {
                         _.set(newRow, fieldName, _.get(row, column));
                     })
 
                     _.forEach(row.filter((data, column) => !mappedColumns.includes(column)), (data, column) => {
-                        _.set(newRow, `Not mapped column #${column + 1}`, _.get(row, column));
+                        _.set(newRow, `Column #${column}`, _.get(row, column));
                     })
 
                     return newRow;
@@ -182,10 +161,29 @@
         margin-top: .25em;
         margin-bottom: .25em;
     }
-    .csv-import-file {
-        margin: 5em;
+    table {
+        margin-bottom: .75em;
     }
-    div.main {
+    .step-one {
+        display: contents;
+    }
+    .step-two {
+        margin: 1em;
+    }
+    .step-three {
+        width: 95%;
+        margin-top: 1em;
+    }
+    .step-bar {
+        width: 85%;
+        margin-top: 5em;
+    }
+    .csv-input {
+        width: 65%;
+        margin-top: 5em;
+        margin-bottom: 3em;
+    }
+    .main {
       display: flex;
       flex-direction: column;
       justify-content: center;
