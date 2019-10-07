@@ -59,6 +59,7 @@
 </template>
 
 <script>
+    import _ from 'lodash'
     import Papaparse from 'papaparse';
 
     export default {
@@ -118,7 +119,7 @@
             },
             postData() {
                 this.requestInProgress = true
-                axios.post('/api/contacts', {data: this.buildPostData()}).then((response) => {
+                this.$axios.post('/api/contacts', {data: this.buildPostData()}).then((response) => {
                     this.results.items = _.map(response.data, (row) => {
                         row.custom_attributes = _.map(row.custom_attributes, (item) => {
                             return `${item.key} => ${item.value}`

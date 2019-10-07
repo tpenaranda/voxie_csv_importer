@@ -11,7 +11,7 @@
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
 </head>
 <body>
-    <div id="app"><main-component></main-component></div>
+    <div id="app"></div>
     <script src="{{ asset('js/app.js') }}" defer></script>
 </body>
 </html>
