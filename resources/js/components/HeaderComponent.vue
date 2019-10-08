@@ -15,11 +15,8 @@
 </template>
 
 <script>
-    import _ from 'lodash'
-    import Papaparse from 'papaparse';
-
     export default {
-        name: 'MainComponent',
+        name: 'HeaderComponent',
     }
 </script>
 

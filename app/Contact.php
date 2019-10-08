@@ -25,6 +25,11 @@ class Contact extends Model
         'updated_at' => 'datetime',
     ];
 
+    protected $hidden = [
+        'created_at',
+        'updated_at',
+    ];
+
     public function customAttributes(): HasMany
     {
         return $this->hasMany(CustomAttribute::class);

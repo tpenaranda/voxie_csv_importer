@@ -7,7 +7,7 @@
                         v-model="csvFile"
                         :state="!!csvFile"
                         placeholder="Choose a CSV file..."
-                        drop-placeholder="Drop file here..."
+                        drop-placeholder="Drop CSV file here..."
                         accept="text/csv, text/x-csv, application/vnd.ms-excel, text/plain"
                         class="csv-input"
                     ></b-form-file>
@@ -35,8 +35,22 @@
                 <b-button v-else @click="postData" class="btn btn-warning mt-2 px-5">Next</b-button>
             </b-container>
         </b-container>
-        <b-container v-if="$root.step === 3" class="my-3 text-center" fluid>
+        <b-container v-if="$root.step === 3" class="results my-3 text-center" fluid>
             <p class="text-success success-message">All good! This is the data returning from the BE tables...</p>
+
+
+            <b-row cols="12">
+                <b-col v-for="(column, index) in _.uniq(_.flatten(_.map(results, (i) => _.keys(i))))" v-bind:key="index"><strong>{{ column }}</strong></b-col>
+            </b-row>
+
+            <b-row v-for="row in results" v-bind:key="row.id" cols="12">
+                <b-col v-for="(column, index) in _.uniq(_.flatten(_.map(results, (i) => _.keys(i))))" v-bind:key="index">
+                    <strong>{{ row[column] }}</strong>
+                </b-col>
+            </b-row>
+
+
+
 
 
             <b-table striped bordered small :items="results" :fields="fields.map((i) => i.key) "></b-table>
@@ -57,7 +71,6 @@
 </template>
 
 <script>
-    import _ from 'lodash'
     import Papaparse from 'papaparse';
 
     export default {
@@ -107,6 +120,13 @@
                         this.$bvModal.show('errors-modal')
                     }
 
+                    this.parsedFilePreviewData[0].forEach((v, k) => {
+                        let columnName = v.trim()
+                        if  (this.fields.map((i) => i.key).includes(columnName)) {
+                            this.fieldsMapping[columnName] = k
+                        }
+                    })
+
                     this.$root.$nextStep()
                 };
 
@@ -117,6 +137,7 @@
             postData() {
                 this.requestInProgress = true
                 this.$axios.post('/api/contacts', {data: this.buildPostData()}).then((response) => {
+                    console.log(response.data)
                     this.results = _.map(response.data, (row) => {
                         row.custom_attributes = _.map(row.custom_attributes, (item) => {
                             return `${item.key} => ${item.value}`
@@ -164,10 +185,6 @@
 </script>
 
 <style lang="scss" scoped>
-    .step-three {
-        width: 85%;
-        margin-top: 1em;
-    }
     .csv-input {
         overflow: hidden;
     }
