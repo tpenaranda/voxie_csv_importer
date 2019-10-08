@@ -21,7 +21,7 @@
                     <b-col><strong>Field</strong></b-col>
                     <b-col><strong>CSV Column</strong></b-col>
                 </b-row>
-                <b-row v-for="(field, key) in results.fields.filter((i) => i.label)" :key="key" class="p-3 border-bottom">
+                <b-row v-for="(field, key) in fields.filter((i) => i.label)" :key="key" class="p-3 border-top">
                     <b-col align-self="center">
                         <p v-bind:class="{'text-danger': field.required, 'text-right': true, 'm-0': true, 'pr-2': true}">
                             {{ field.label }}
@@ -37,7 +37,12 @@
         </b-container>
         <b-container v-if="$root.step === 3" class="my-3 text-center" fluid>
             <p class="text-success success-message">All good! This is the data returning from the BE tables...</p>
-            <b-table striped bordered small :items="results.items" :fields="results.fields.map((i) => i.key) "></b-table>
+
+
+            <b-table striped bordered small :items="results" :fields="fields.map((i) => i.key) "></b-table>
+
+
+
         </b-container>
         <div class="errors-modal">
           <b-modal id="errors-modal" scrollable centered :title="errorTitle || 'Can\'t store your data!'" ok-only>
@@ -62,25 +67,23 @@
                 csvFile: null,
                 errors: [],
                 errorTitle: null,
+                fields: [
+                    { key: 'email', label: 'Email [string, unique]' },
+                    { key: 'fb_messenger_id', label: 'Facebook Messenger #ID [string]' },
+                    { key: 'first_name', label: 'First Name [string]' },
+                    { key: 'last_name', label: 'Last Name [string]' },
+                    { key: 'phone', label: 'Phone [required, string]', required: true },
+                    { key: 'sticky_phone_number_id', label: 'Sticky Phone Number #ID [integer]' },
+                    { key: 'team_id', label: 'Team #ID [required, integer]', required: true },
+                    { key: 'time_zone', label: 'Time Zone [string]' },
+                    { key: 'twitter_id', label: 'Twitter #ID [string]' },
+                    { key: 'unsubscribed_status', label: 'Unsubscribed Status [required, string]', required: true },
+                    { key: 'custom_attributes', variant: 'secondary'}
+                ],
                 fieldsMapping: {},
                 parsedFileData: null,
                 parsedFilePreviewData: null,
-                results: {
-                    fields: [
-                        { key: 'email', label: 'Email [string, unique]' },
-                        { key: 'fb_messenger_id', label: 'Facebook Messenger #ID [string]' },
-                        { key: 'first_name', label: 'First Name [string]' },
-                        { key: 'last_name', label: 'Last Name [string]' },
-                        { key: 'phone', label: 'Phone [required, string]', required: true },
-                        { key: 'sticky_phone_number_id', label: 'Sticky Phone Number #ID [integer]' },
-                        { key: 'team_id', label: 'Team #ID [required, integer]', required: true },
-                        { key: 'time_zone', label: 'Time Zone [string]' },
-                        { key: 'twitter_id', label: 'Twitter #ID [string]' },
-                        { key: 'unsubscribed_status', label: 'Unsubscribed Status [required, string]', required: true },
-                        { key: 'custom_attributes', variant: 'secondary'}
-                    ],
-                    items: []
-                },
+                results: [],
                 requestInProgress: false,
                 rowLimit: 128
             }
@@ -114,7 +117,7 @@
             postData() {
                 this.requestInProgress = true
                 this.$axios.post('/api/contacts', {data: this.buildPostData()}).then((response) => {
-                    this.results.items = _.map(response.data, (row) => {
+                    this.results = _.map(response.data, (row) => {
                         row.custom_attributes = _.map(row.custom_attributes, (item) => {
                             return `${item.key} => ${item.value}`
                         }).join(' / ')
