@@ -23,14 +23,13 @@
     }
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
     .title {
-        border-bottom: 1px solid;
-        border-top: 1px solid;
-        margin-top: .25em;
-        margin-bottom: .25em;
+        border-bottom: 1px solid #14abe0;
+        border-top: 1px solid #14abe0;
         font-size: 1.25em;
         font-weight: bold;
+        margin: auto;
     }
     .progress.step-bar {
         width: 85%;
