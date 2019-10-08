@@ -15,6 +15,7 @@
                 </b-col>
             </b-row>
         </b-container>
+
         <b-container v-if="$root.step === 2" class="my-3">
             <b-container class="field-mapping text-center">
                 <b-row class="m-2 text-center" >
@@ -32,32 +33,29 @@
                     </b-col>
                 </b-row>
                 <b-spinner v-if="requestInProgress" variant="warning" class="mt-2" label="Uploading..."></b-spinner>
-                <b-button v-else @click="postData" class="btn btn-warning mt-2 px-5">Next</b-button>
+                <b-button v-else @click="postData" class="btn btn-success mt-2 px-5">Next</b-button>
             </b-container>
         </b-container>
+
         <b-container v-if="$root.step === 3" class="results my-3 text-center" fluid>
             <p class="text-success success-message">All good! This is the data returning from the BE tables...</p>
-
-
             <b-row cols="12">
-                <b-col v-for="(column, index) in _.uniq(_.flatten(_.map(results, (i) => _.keys(i))))" v-bind:key="index"><strong>{{ column }}</strong></b-col>
-            </b-row>
-
-            <b-row v-for="row in results" v-bind:key="row.id" cols="12">
-                <b-col v-for="(column, index) in _.uniq(_.flatten(_.map(results, (i) => _.keys(i))))" v-bind:key="index">
-                    <strong>{{ row[column] }}</strong>
+                <b-col v-for="(column, index) in results.columns" v-bind:key="index" class="text-capitalize">
+                    <strong>{{ column.replace(/_/g, ' ') }}</strong>
                 </b-col>
             </b-row>
-
-
-
-
-
-            <b-table striped bordered small :items="results" :fields="fields.map((i) => i.key) "></b-table>
-
-
-
+            <b-row v-for="row in results.rows" v-bind:key="row.id" cols="12" class="border">
+                <b-col v-for="(column, index) in results.columns" v-bind:key="index">
+                    <span v-if="column === 'custom_attributes'">
+                        <span v-for="custom_attribute in row[column]">
+                            <p class="custom-attribute">{{ custom_attribute.key }}: {{ custom_attribute.value }}</p>
+                        </span>
+                    </span>
+                    <span v-else>{{ row[column] }}</span>
+                </b-col>
+            </b-row>
         </b-container>
+
         <div class="errors-modal">
           <b-modal id="errors-modal" scrollable centered :title="errorTitle || 'Can\'t store your data!'" ok-only>
             <b-list-group>
@@ -96,7 +94,10 @@
                 fieldsMapping: {},
                 parsedFileData: null,
                 parsedFilePreviewData: null,
-                results: [],
+                results: {
+                    columns: [],
+                    rows: []
+                },
                 requestInProgress: false,
                 rowLimit: 128
             }
@@ -120,12 +121,7 @@
                         this.$bvModal.show('errors-modal')
                     }
 
-                    this.parsedFilePreviewData[0].forEach((v, k) => {
-                        let columnName = v.trim()
-                        if  (this.fields.map((i) => i.key).includes(columnName)) {
-                            this.fieldsMapping[columnName] = k
-                        }
-                    })
+                    this.autoselectMatchingColumn()
 
                     this.$root.$nextStep()
                 };
@@ -134,16 +130,19 @@
                     alert('Error reading CSV file.')
                 };
             },
+            autoselectMatchingColumn() {
+                this.parsedFilePreviewData[0].forEach((v, k) => {
+                    let columnName = v.trim()
+                    if  (this.fields.map((i) => i.key).includes(columnName)) {
+                        this.fieldsMapping[columnName] = k
+                    }
+                })
+            },
             postData() {
                 this.requestInProgress = true
                 this.$axios.post('/api/contacts', {data: this.buildPostData()}).then((response) => {
-                    console.log(response.data)
-                    this.results = _.map(response.data, (row) => {
-                        row.custom_attributes = _.map(row.custom_attributes, (item) => {
-                            return `${item.key} => ${item.value}`
-                        }).join(' / ')
-                        return row
-                    })
+                    this.results.rows = response.data
+                    this.results.columns = _.uniq(_.flatten(_.map(response.data, (i) => _.keys(i))))
                     this.$root.$nextStep()
                 }).catch(error => {
                     if (error.response && error.response.status === 422) {

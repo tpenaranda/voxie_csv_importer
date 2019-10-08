@@ -2,7 +2,11 @@
     <div class="header">
         <b-container class="text-center" fluid>
             <b-row align-h="center">
-                <b-col align-self="center" cols="12" sm="5"><img src="https://www.voxie.com/wp-content/uploads/elementor/thumbs/VOXIE-black-o1ol2ora2qld6vodwmsrb0qd5dj7ere5midef05xk8.png" width="240" height="120"></b-col>
+                <b-col align-self="center" cols="12" sm="5">
+                    <a href="/">
+                        <img src="https://www.voxie.com/wp-content/uploads/elementor/thumbs/VOXIE-black-o1ol2ora2qld6vodwmsrb0qd5dj7ere5midef05xk8.png" width="240" height="120">
+                    </a>
+                </b-col>
                 <b-col align-self="center" cols="auto"></b-col>
                 <b-col align-self="center" cols="12" sm="5"><p class="title">CSV File Parser</p></b-col>
             </b-row>
