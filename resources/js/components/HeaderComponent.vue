@@ -11,7 +11,6 @@
                 <b-col align-self="center" cols="12" sm="5"><p class="title">CSV File Parser</p></b-col>
             </b-row>
         </b-container>
-
         <b-progress :max="3" class="step-bar" fluid>
           <b-progress-bar :value="$root.step" :label="`Step ${$root.step} / 3`"></b-progress-bar>
         </b-progress>
@@ -32,7 +31,7 @@
         font-weight: bold;
         margin: auto;
     }
-    .progress.step-bar {
+    .step-bar {
         width: 85%;
         height: 2rem !important;
         font-size: 1em;

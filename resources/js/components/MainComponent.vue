@@ -29,26 +29,29 @@
                         </p>
                     </b-col>
                     <b-col align-self="center">
-                        <b-form-select v-model="fieldsMapping[field.key]" :options="parsedFilePreviewData[0].map((v, k) => { return {text: v, value: k} })"></b-form-select>
+                        <b-form-select v-model="fieldsMapping[field.key]" :options="parsedFilePreviewData[0].map((v, k) => { return {text: v, value: k} })" :disabled="requestInProgress"></b-form-select>
                     </b-col>
                 </b-row>
-                <b-spinner v-if="requestInProgress" variant="warning" class="mt-2" label="Uploading..."></b-spinner>
-                <b-button v-else @click="postData" class="btn btn-success mt-2 px-5">Next</b-button>
+                <b-progress v-if="requestInProgress" :max="chunks.total" class="chunks-bar" fluid>
+                    <b-progress-bar animated variant="warning" :value="chunks.current" :label="`Uploading chunk ${chunks.current} / ${chunks.total}`"></b-progress-bar>
+                </b-progress>
+                <b-button v-else @click="uploadData" class="btn btn-success mt-2 px-5">Next</b-button>
+
             </b-container>
         </b-container>
 
-        <b-container v-if="$root.step === 3" class="results my-3 text-center" fluid>
-            <p class="text-success success-message">All good! This is the data returning from the BE tables...</p>
-            <b-row cols="12">
-                <b-col v-for="(column, index) in results.columns" v-bind:key="index" class="text-capitalize">
+        <b-container v-if="$root.step === 3" class="my-3 text-center px-4" fluid>
+            <p class="text-success success-message">All good! This is the data coming back from the BE database...</p>
+            <b-row class="results mb-22">
+                <b-col v-for="(column, index) in results.columns" v-bind:key="index" class="text-capitalize" align-self="center">
                     <strong>{{ column.replace(/_/g, ' ') }}</strong>
                 </b-col>
             </b-row>
-            <b-row v-for="row in results.rows" v-bind:key="row.id" cols="12" class="border">
-                <b-col v-for="(column, index) in results.columns" v-bind:key="index">
+            <b-row v-for="row in results.rows" v-bind:key="row.id" class="results border-top border-dark">
+                <b-col v-for="(column, index) in results.columns" v-bind:key="index" align-self="center">
                     <span v-if="column === 'custom_attributes'">
                         <span v-for="custom_attribute in row[column]">
-                            <p class="custom-attribute">{{ custom_attribute.key }}: {{ custom_attribute.value }}</p>
+                            <p class="p-0 m-0">{{ custom_attribute.key }}: {{ custom_attribute.value }}</p>
                         </span>
                     </span>
                     <span v-else>{{ row[column] }}</span>
@@ -99,7 +102,11 @@
                     rows: []
                 },
                 requestInProgress: false,
-                rowLimit: 128
+                chunkSize: 128,
+                chunks: {
+                    current: 0,
+                    total: 0
+                }
             }
         },
         methods: {
@@ -112,14 +119,8 @@
 
                     this.parsedFilePreviewData = Papaparse.parse(csvString, { preview: 2, skipEmptyLines: true }).data
 
-                    let parsedFile = Papaparse.parse(csvString, { preview: this.rowLimit, skipEmptyLines: true })
+                    let parsedFile = Papaparse.parse(csvString, { skipEmptyLines: true })
                     this.parsedFileData = parsedFile.data
-
-                    if (parsedFile.meta.truncated) {
-                        this.errorTitle = 'Data truncated!'
-                        this.errors = [`Your CSV file is being truncated to ${this.rowLimit} rows. This importer tool works synchronically against the BE (no Jobs/Queues) and a big load could end in timeouts or unresponsive FE.`]
-                        this.$bvModal.show('errors-modal')
-                    }
 
                     this.autoselectMatchingColumn()
 
@@ -138,12 +139,28 @@
                     }
                 })
             },
-            postData() {
+            uploadData() {
                 this.requestInProgress = true
-                this.$axios.post('/api/contacts', {data: this.buildPostData()}).then((response) => {
-                    this.results.rows = response.data
-                    this.results.columns = _.uniq(_.flatten(_.map(response.data, (i) => _.keys(i))))
+
+                let chunks = _.chunk(this.buildPostData(), this.chunkSize)
+
+                this.chunks.total = chunks.length
+                this.chunks.current = 0
+
+                const reducer = (acc$, inputValue) => acc$.then(acc => this.uploadChunk(inputValue).then(result => acc.push(result) && acc));
+                chunks.reduce(reducer, Promise.resolve([])).then((results) => {
+                    this.requestInProgress = false
+                    this.results.rows = results.flat()
+                    this.results.columns = _.uniq(_.flatten(_.map(this.results.rows, (i) => _.keys(i))))
                     this.$root.$nextStep()
+
+                });
+            },
+            uploadChunk(chunk) {
+                this.chunks.current++
+                return this.$axios.post('/api/contacts', {data: chunk}).then((response) => {
+                    this.results.rows = this.results.rows.concat(response.data)
+                    return response.data
                 }).catch(error => {
                     if (error.response && error.response.status === 422) {
                         this.errors = []
@@ -155,8 +172,6 @@
                     } else {
                         alert('Unknown error when submitting CSV data...')
                     }
-                }).finally((response) => {
-                    this.requestInProgress = false
                 })
             },
             buildPostData() {
@@ -186,5 +201,18 @@
 <style lang="scss" scoped>
     .csv-input {
         overflow: hidden;
+    }
+    .chunks-bar {
+        width: 50%;
+        height: 2rem !important;
+        font-size: 1em;
+        margin: 1em auto 0 auto;
+    }
+    .results {
+        min-width: 1024px;
+    }
+    .results .col {
+        margin: 0;
+        padding: 0;
     }
 </style>
