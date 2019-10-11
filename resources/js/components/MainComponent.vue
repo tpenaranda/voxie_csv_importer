@@ -18,25 +18,29 @@
 
         <b-container v-if="$root.step === 2" class="my-3">
             <b-container class="field-mapping text-center">
-                <b-row class="m-2 text-center" >
-                    <b-col><strong>Field</strong></b-col>
-                    <b-col><strong>CSV Column</strong></b-col>
-                </b-row>
-                <b-row v-for="(field, key) in fields.filter((i) => i.label)" :key="key" class="p-3 border-top">
-                    <b-col align-self="center">
-                        <p v-bind:class="{'text-danger': field.required, 'text-right': true, 'm-0': true, 'pr-2': true}">
-                            {{ field.label }}
-                        </p>
-                    </b-col>
-                    <b-col align-self="center">
-                        <b-form-select v-model="fieldsMapping[field.key]" :options="parsedFilePreviewData[0].map((v, k) => { return {text: v, value: k} })" :disabled="requestInProgress"></b-form-select>
-                    </b-col>
-                </b-row>
-                <b-progress v-if="requestInProgress" :max="chunks.total" class="chunks-bar" fluid>
-                    <b-progress-bar animated variant="warning" :value="chunks.current" :label="`Uploading chunk ${chunks.current} / ${chunks.total}`"></b-progress-bar>
-                </b-progress>
-                <b-button v-else @click="uploadData" class="btn btn-success mt-2 px-5">Next</b-button>
-
+                <span v-if="!requestInProgress">
+                    <b-row class="m-2 text-center" >
+                        <b-col><strong>Field</strong></b-col>
+                        <b-col><strong>CSV Column</strong></b-col>
+                    </b-row>
+                    <b-row v-for="(field, key) in fields.filter((i) => i.label)" :key="key" class="p-3 border-top">
+                        <b-col align-self="center">
+                            <p v-bind:class="{'text-danger': field.required, 'text-right': true, 'm-0': true, 'pr-2': true}">
+                                {{ field.label }}
+                            </p>
+                        </b-col>
+                        <b-col align-self="center">
+                            <b-form-select v-model="fieldsMapping[field.key]" :options="parsedFilePreviewData[0].map((v, k) => { return {text: v, value: k} })" :disabled="requestInProgress"></b-form-select>
+                        </b-col>
+                    </b-row>
+                    <b-button @click="uploadData" class="btn btn-success mt-2 px-5">Next</b-button>
+                </span>
+                <span v-else>
+                    <p><strong>Uploading and validating chunk {{ chunks.current }} of {{ chunks.total }}...</strong></p>
+                    <b-progress :max="chunks.total" class="chunks-bar" fluid>
+                        <b-progress-bar animated variant="warning" :value="chunks.current"></b-progress-bar>
+                    </b-progress>
+                </span>
             </b-container>
         </b-container>
 
@@ -60,7 +64,7 @@
         </b-container>
 
         <div class="errors-modal">
-          <b-modal id="errors-modal" scrollable centered :title="errorTitle || 'Can\'t store your data!'" ok-only>
+          <b-modal id="errors-modal" scrollable centered :title="errorTitle" ok-only>
             <b-list-group>
                 <b-list-group-item v-for="(error, index) in errors" v-bind:key="index" variant="warning">
                     {{ error }}
@@ -80,7 +84,7 @@
             return {
                 csvFile: null,
                 errors: [],
-                errorTitle: null,
+                errorTitle: "Can't store your data!",
                 fields: [
                     { key: 'email', label: 'Email [string, unique]' },
                     { key: 'fb_messenger_id', label: 'Facebook Messenger #ID [string]' },
@@ -146,14 +150,18 @@
 
                 this.chunks.total = chunks.length
                 this.chunks.current = 0
+                this.errors = []
+                this.results.rows = []
 
-                const reducer = (acc$, inputValue) => acc$.then(acc => this.uploadChunk(inputValue).then(result => acc.push(result) && acc));
+                const reducer = (accumulator, inputValue) => accumulator.then(acc => this.uploadChunk(inputValue).then(result => acc.push(result) && acc));
+
                 chunks.reduce(reducer, Promise.resolve([])).then((results) => {
-                    this.requestInProgress = false
                     this.results.rows = results.flat()
-                    this.results.columns = _.uniq(_.flatten(_.map(this.results.rows, (i) => _.keys(i))))
                     this.$root.$nextStep()
-
+                }).catch((error) => {
+                }).finally(() => {
+                    this.requestInProgress = false
+                    this.results.columns = _.uniq(_.flatten(_.map(this.results.rows, (i) => _.keys(i))))
                 });
             },
             uploadChunk(chunk) {
@@ -163,15 +171,16 @@
                     return response.data
                 }).catch(error => {
                     if (error.response && error.response.status === 422) {
-                        this.errors = []
                         _.forEach(error.response.data.errors, (error) => {
                             let errorPieces = error[0].split('.', 3)
-                            this.errors.push(`Row #${errorPieces[1]}: ${errorPieces[2]}`)
+                            let rowNumber = Number(errorPieces[1]) + this.chunkSize * (this.chunks.current - 1)
+                            this.errors.push(`Row #${rowNumber}: ${errorPieces[2]}`)
                         })
                         this.$bvModal.show('errors-modal')
                     } else {
                         alert('Unknown error when submitting CSV data...')
                     }
+                    return Promise.reject()
                 })
             },
             buildPostData() {
